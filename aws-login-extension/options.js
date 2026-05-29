@@ -240,4 +240,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     await save();
     hideForm();
   });
+
+  // ── Export ──
+  document.getElementById('btn-export').addEventListener('click', () => {
+    if (accounts.length === 0) return alert('내보낼 계정이 없습니다.');
+    const json = JSON.stringify({ version: 1, accounts }, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `aws-accounts-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ── Import ──
+  document.getElementById('import-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = ''; // 같은 파일 재선택 허용
+
+    let parsed;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      return alert('올바른 JSON 파일이 아닙니다.');
+    }
+
+    const incoming = parsed.accounts ?? (Array.isArray(parsed) ? parsed : null);
+    if (!incoming) return alert('계정 데이터를 찾을 수 없습니다.');
+
+    // 유효성 검사
+    const valid = incoming.filter(a => a.name && a.accountId && a.username && a.password);
+    if (valid.length === 0) return alert('유효한 계정이 없습니다.\n필수 항목: name, accountId, username, password');
+
+    const skipped = incoming.length - valid.length;
+    const existing = accounts.map(a => a.accountId);
+
+    // accountId 기준으로 중복 처리 선택
+    const dupes = valid.filter(a => existing.includes(a.accountId));
+    let mode = 'merge'; // merge | overwrite | skip
+    if (dupes.length > 0) {
+      const choice = confirm(
+        `중복된 계정 ${dupes.length}개가 있습니다.\n\n확인 → 덮어쓰기\n취소 → 새 계정만 추가`
+      );
+      mode = choice ? 'overwrite' : 'skip';
+    }
+
+    let added = 0, updated = 0;
+    for (const a of valid) {
+      const idx = accounts.findIndex(x => x.accountId === a.accountId);
+      if (idx === -1) {
+        accounts.push(a);
+        added++;
+      } else if (mode === 'overwrite') {
+        accounts[idx] = a;
+        updated++;
+      }
+    }
+
+    await save();
+    renderSidebar();
+    hideForm();
+
+    const parts = [];
+    if (added)   parts.push(`추가 ${added}개`);
+    if (updated) parts.push(`업데이트 ${updated}개`);
+    if (skipped) parts.push(`필드 오류로 건너뜀 ${skipped}개`);
+    alert(`가져오기 완료\n${parts.join(' / ')}`);
+  });
 });
