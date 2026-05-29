@@ -10,8 +10,8 @@ body {
   max-height: 560px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
-  background: #0f1117;
-  color: #e2e8f0;
+  background: #f8fafc;
+  color: #1e293b;
   display: flex;
   flex-direction: column;
 }
@@ -21,7 +21,8 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px 10px;
-  border-bottom: 1px solid #1e2533;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
 }
 
 .title-row {
@@ -30,20 +31,18 @@ body {
   gap: 8px;
 }
 
-.logo {
-  font-size: 20px;
-}
+.logo { font-size: 20px; }
 
 h1 {
   font-size: 15px;
-  font-weight: 600;
-  color: #f0f4ff;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .icon-btn {
   background: none;
   border: none;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 18px;
   cursor: pointer;
   padding: 4px;
@@ -52,57 +51,50 @@ h1 {
 }
 
 .icon-btn:hover {
-  color: #94a3b8;
-  background: #1e2533;
+  color: #475569;
+  background: #f1f5f9;
 }
 
 .search-wrap {
-  padding: 10px 16px 6px;
+  padding: 10px 12px 6px;
+  background: #fff;
 }
 
 #search {
   width: 100%;
   padding: 8px 12px;
-  background: #1a1f2e;
-  border: 1px solid #2a3347;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 13px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 #search:focus {
+  background: #fff;
   border-color: #3b82f6;
+  box-shadow: 0 0 0 3px #dbeafe;
 }
 
-#search::placeholder {
-  color: #475569;
-}
+#search::placeholder { color: #94a3b8; }
 
 .account-list {
   flex: 1;
   overflow-y: auto;
   padding: 6px 8px;
+  background: #f8fafc;
 }
 
-.account-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.account-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.account-list::-webkit-scrollbar-thumb {
-  background: #2a3347;
-  border-radius: 2px;
-}
+.account-list::-webkit-scrollbar { width: 4px; }
+.account-list::-webkit-scrollbar-track { background: transparent; }
+.account-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
 
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: #475569;
+  color: #94a3b8;
 }
 
 .empty-state p {
@@ -117,14 +109,17 @@ h1 {
   padding: 10px 12px;
   border-radius: 10px;
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.12s, box-shadow 0.12s;
   margin-bottom: 4px;
   border: 1px solid transparent;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .account-item:hover {
-  background: #1a1f2e;
-  border-color: #2a3347;
+  background: #f0f6ff;
+  border-color: #bfdbfe;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.1);
 }
 
 .account-avatar {
@@ -134,7 +129,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   flex-shrink: 0;
   color: #fff;
@@ -148,7 +143,7 @@ h1 {
 .account-name {
   font-weight: 600;
   font-size: 13px;
-  color: #f0f4ff;
+  color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -170,14 +165,12 @@ h1 {
   transition: opacity 0.12s;
 }
 
-.account-item:hover .account-actions {
-  opacity: 1;
-}
+.account-item:hover .account-actions { opacity: 1; }
 
 .action-btn {
   background: none;
   border: none;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 15px;
   cursor: pointer;
   padding: 4px 6px;
@@ -186,17 +179,17 @@ h1 {
 }
 
 .action-btn:hover {
-  color: #94a3b8;
-  background: #2a3347;
+  color: #475569;
+  background: #f1f5f9;
 }
 
 .action-btn.delete:hover {
   color: #ef4444;
-  background: #2d1b1b;
+  background: #fee2e2;
 }
 
 .login-btn {
-  background: #1d4ed8;
+  background: #2563eb;
   border: none;
   color: #fff;
   font-size: 12px;
@@ -209,47 +202,45 @@ h1 {
   flex-shrink: 0;
 }
 
-.login-btn:hover {
-  background: #2563eb;
-}
+.login-btn:hover { background: #1d4ed8; }
 
 .footer {
-  padding: 10px 16px 14px;
-  border-top: 1px solid #1e2533;
+  padding: 10px 12px 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
 }
 
 .btn-add {
   width: 100%;
   padding: 9px;
-  background: #1a1f2e;
-  border: 1px dashed #2a3347;
+  background: #fff;
+  border: 1.5px dashed #cbd5e1;
   border-radius: 8px;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.12s;
 }
 
 .btn-add:hover {
-  background: #1e2533;
   border-color: #3b82f6;
   color: #3b82f6;
+  background: #eff6ff;
 }
 
 .btn-primary {
-  background: #1d4ed8;
+  background: #2563eb;
   border: none;
   color: #fff;
   padding: 8px 20px;
   border-radius: 8px;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.12s;
 }
 
-.btn-primary:hover {
-  background: #2563eb;
-}
+.btn-primary:hover { background: #1d4ed8; }
 
 /* TOTP 코드 블록 */
 .totp-block {
@@ -263,14 +254,14 @@ h1 {
   font-size: 15px;
   font-weight: 700;
   font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-  color: #4ade80;
+  color: #16a34a;
   letter-spacing: 0.1em;
   cursor: pointer;
   transition: opacity 0.15s;
   user-select: none;
 }
 
-.totp-code:hover { opacity: 0.75; }
+.totp-code:hover { opacity: 0.7; }
 
 .totp-timer {
   position: relative;
@@ -279,20 +270,17 @@ h1 {
   flex-shrink: 0;
 }
 
-.totp-ring {
-  width: 20px;
-  height: 20px;
-}
+.totp-ring { width: 20px; height: 20px; }
 
 .totp-ring-bg {
   fill: none;
-  stroke: #1a2e1a;
+  stroke: #dcfce7;
   stroke-width: 2.5;
 }
 
 .totp-ring-bar {
   fill: none;
-  stroke: #22c55e;
+  stroke: #16a34a;
   stroke-width: 2.5;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.9s linear, stroke 0.3s;
@@ -306,5 +294,5 @@ h1 {
   justify-content: center;
   font-size: 7px;
   font-weight: 700;
-  color: #4ade80;
+  color: #16a34a;
 }
