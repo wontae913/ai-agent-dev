@@ -1,3 +1,44 @@
+const CSV_FIELDS = ['name', 'accountId', 'username', 'password', 'mfaSecret', 'note'];
+
+function toCsv(accounts) {
+  const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const header = CSV_FIELDS.join(',');
+  const rows = accounts.map(a => CSV_FIELDS.map(f => esc(a[f])).join(','));
+  return [header, ...rows].join('\r\n');
+}
+
+function fromCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = parseCsvRow(lines[0]);
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = parseCsvRow(line);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h.trim()] = (vals[i] ?? '').trim(); });
+    return obj;
+  });
+}
+
+// RFC 4180 호환 CSV 행 파서 (큰따옴표 이스케이프 처리)
+function parseCsvRow(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ',') { result.push(cur); cur = ''; }
+      else cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
 const AVATAR_COLORS = [
   '#e11d48','#db2777','#9333ea','#7c3aed',
   '#4f46e5','#2563eb','#0891b2','#0d9488',
@@ -244,13 +285,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Export ──
   document.getElementById('btn-export').addEventListener('click', () => {
     if (accounts.length === 0) return alert('내보낼 계정이 없습니다.');
-    const json = JSON.stringify({ version: 1, accounts }, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const fmt = confirm('확인 → JSON\n취소 → CSV') ? 'json' : 'csv';
+    const date = new Date().toISOString().slice(0, 10);
+    let blob, filename;
+    if (fmt === 'json') {
+      blob = new Blob([JSON.stringify({ version: 1, accounts }, null, 2)], { type: 'application/json' });
+      filename = `aws-accounts-${date}.json`;
+    } else {
+      blob = new Blob([toCsv(accounts)], { type: 'text/csv;charset=utf-8;' });
+      filename = `aws-accounts-${date}.csv`;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const date = new Date().toISOString().slice(0, 10);
     a.href = url;
-    a.download = `aws-accounts-${date}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -259,45 +307,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('import-file').addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
-    e.target.value = ''; // 같은 파일 재선택 허용
+    e.target.value = '';
 
-    let parsed;
+    let incoming;
     try {
-      parsed = JSON.parse(await file.text());
-    } catch {
-      return alert('올바른 JSON 파일이 아닙니다.');
+      const text = await file.text();
+      if (file.name.endsWith('.csv')) {
+        incoming = fromCsv(text);
+      } else {
+        const parsed = JSON.parse(text);
+        incoming = parsed.accounts ?? (Array.isArray(parsed) ? parsed : null);
+        if (!incoming) return alert('계정 데이터를 찾을 수 없습니다.');
+      }
+    } catch (err) {
+      return alert(`파일을 읽을 수 없습니다.\n${err.message}`);
     }
 
-    const incoming = parsed.accounts ?? (Array.isArray(parsed) ? parsed : null);
-    if (!incoming) return alert('계정 데이터를 찾을 수 없습니다.');
-
-    // 유효성 검사
     const valid = incoming.filter(a => a.name && a.accountId && a.username && a.password);
-    if (valid.length === 0) return alert('유효한 계정이 없습니다.\n필수 항목: name, accountId, username, password');
+    if (valid.length === 0) return alert('유효한 계정이 없습니다.\n필수 열: name, accountId, username, password');
 
     const skipped = incoming.length - valid.length;
-    const existing = accounts.map(a => a.accountId);
-
-    // accountId 기준으로 중복 처리 선택
-    const dupes = valid.filter(a => existing.includes(a.accountId));
-    let mode = 'merge'; // merge | overwrite | skip
+    const dupes = valid.filter(a => accounts.some(x => x.accountId === a.accountId));
+    let overwrite = false;
     if (dupes.length > 0) {
-      const choice = confirm(
-        `중복된 계정 ${dupes.length}개가 있습니다.\n\n확인 → 덮어쓰기\n취소 → 새 계정만 추가`
-      );
-      mode = choice ? 'overwrite' : 'skip';
+      overwrite = confirm(`중복된 계정 ${dupes.length}개가 있습니다.\n\n확인 → 덮어쓰기\n취소 → 새 계정만 추가`);
     }
 
     let added = 0, updated = 0;
     for (const a of valid) {
       const idx = accounts.findIndex(x => x.accountId === a.accountId);
-      if (idx === -1) {
-        accounts.push(a);
-        added++;
-      } else if (mode === 'overwrite') {
-        accounts[idx] = a;
-        updated++;
-      }
+      if (idx === -1) { accounts.push(a); added++; }
+      else if (overwrite) { accounts[idx] = a; updated++; }
     }
 
     await save();
@@ -307,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const parts = [];
     if (added)   parts.push(`추가 ${added}개`);
     if (updated) parts.push(`업데이트 ${updated}개`);
-    if (skipped) parts.push(`필드 오류로 건너뜀 ${skipped}개`);
+    if (skipped) parts.push(`건너뜀 ${skipped}개`);
     alert(`가져오기 완료\n${parts.join(' / ')}`);
   });
 });
