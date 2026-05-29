@@ -60,16 +60,25 @@ function setValue(el, value) {
 
 function clickNext() {
   const btn = document.getElementById('next_button') ||
-              document.querySelector('button[type="submit"]') ||
-              document.querySelector('.awsui-button-variant-primary');
+              document.getElementById('submit_request') ||
+              formSubmitBtn();
   btn?.click();
 }
 
 function clickSubmit() {
   const btn = document.getElementById('signin_button') ||
-              document.querySelector('button[type="submit"]') ||
-              document.querySelector('input[type="submit"]');
+              document.getElementById('submit_request') ||
+              formSubmitBtn();
   btn?.click();
+}
+
+// 로그인 폼 안에서만 submit 버튼을 찾아 오탐 방지
+function formSubmitBtn() {
+  const form = document.getElementById('login-form') ||
+               document.querySelector('form[name="loginForm"]') ||
+               document.querySelector('form');
+  if (!form) return null;
+  return form.querySelector('button[type="submit"], input[type="submit"]');
 }
 
 function fillStep(fn, maxWait = 8000, interval = 200) {
