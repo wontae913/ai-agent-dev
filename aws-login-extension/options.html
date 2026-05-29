@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>AWS 계정 관리 - 설정</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span class="logo">☁</span>
+        <span>AWS 계정 관리</span>
+      </div>
+      <div id="account-sidebar-list"></div>
+      <button id="btn-new" class="btn-new">+ 새 계정 추가</button>
+    </div>
+
+    <div class="main">
+      <div id="form-area" class="form-card hidden">
+        <h2 id="form-title">새 계정 추가</h2>
+
+        <div class="form-group">
+          <label>고객사 이름 <span class="required">*</span></label>
+          <input type="text" id="f-name" placeholder="예: ACME Corp" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label>AWS 계정 ID (12자리) <span class="required">*</span></label>
+          <input type="text" id="f-account-id" placeholder="123456789012" maxlength="12" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label>IAM 사용자 이름 <span class="required">*</span></label>
+          <input type="text" id="f-username" placeholder="admin" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label>비밀번호 <span class="required">*</span></label>
+          <div class="pw-wrap">
+            <input type="password" id="f-password" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" id="btn-toggle-pw" class="toggle-pw">👁</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>메모 (선택)</label>
+          <input type="text" id="f-note" placeholder="리전, 담당자 등" autocomplete="off">
+        </div>
+
+        <div class="form-actions">
+          <button id="btn-cancel" class="btn-secondary">취소</button>
+          <button id="btn-delete" class="btn-danger hidden">삭제</button>
+          <button id="btn-save" class="btn-primary">저장</button>
+        </div>
+
+        <div id="form-msg" class="form-msg"></div>
+      </div>
+
+      <div id="empty-main" class="empty-main">
+        <div class="empty-icon">☁</div>
+        <p>왼쪽에서 계정을 선택하거나<br>새 계정을 추가하세요.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

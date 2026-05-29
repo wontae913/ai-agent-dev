@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>AWS Multi-Account Login</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="title-row">
+      <span class="logo">☁</span>
+      <h1>AWS 계정 관리</h1>
+    </div>
+    <button id="btn-options" class="icon-btn" title="설정">⚙</button>
+  </div>
+
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="고객사 검색..." autocomplete="off">
+  </div>
+
+  <div id="account-list" class="account-list">
+    <div class="empty-state">
+      <p>등록된 계정이 없습니다.</p>
+      <button id="btn-add-first" class="btn-primary">+ 첫 계정 추가</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button id="btn-add" class="btn-add">+ 계정 추가</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
