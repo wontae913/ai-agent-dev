@@ -14,14 +14,76 @@ function getInitials(name) {
   return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function maskPassword(pw) {
-  return '••••••••';
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 async function loadAccounts() {
   return new Promise(resolve => {
     chrome.storage.local.get('accounts', data => resolve(data.accounts || []));
   });
+}
+
+// 전체 TOTP 업데이트 루프 — 1초마다 모든 카드 갱신
+let totpTimer = null;
+
+function startTotpLoop() {
+  if (totpTimer) clearInterval(totpTimer);
+  totpTimer = setInterval(updateAllTotp, 1000);
+}
+
+async function updateAllTotp() {
+  const remaining = window.TOTP.totpRemaining();
+  const circumference = 2 * Math.PI * 9; // r=9
+
+  document.querySelectorAll('.totp-block[data-secret]').forEach(async block => {
+    const secret = block.dataset.secret;
+    const codeEl = block.querySelector('.totp-code');
+    const countdownEl = block.querySelector('.totp-countdown');
+    const ringBar = block.querySelector('.totp-ring-bar');
+
+    try {
+      // 주기가 바뀌는 순간(remaining==30)에만 코드 재생성
+      if (remaining === 30 || !codeEl.textContent.trim().replace(' ','').match(/^\d{6}$/)) {
+        const code = await window.TOTP.generateTOTP(secret);
+        codeEl.textContent = code.slice(0, 3) + ' ' + code.slice(3);
+      }
+      countdownEl.textContent = remaining;
+      const progress = remaining / 30;
+      ringBar.style.strokeDasharray = circumference;
+      ringBar.style.strokeDashoffset = circumference * (1 - progress);
+      ringBar.style.stroke = remaining <= 5 ? '#ef4444' : '#22c55e';
+      codeEl.style.color = remaining <= 5 ? '#ef4444' : '#4ade80';
+    } catch (_) {
+      codeEl.textContent = 'ERROR';
+    }
+  });
+}
+
+async function initTotp() {
+  // 첫 렌더 후 모든 TOTP 블록에 초기값 채우기
+  const remaining = window.TOTP.totpRemaining();
+  const circumference = 2 * Math.PI * 9;
+
+  for (const block of document.querySelectorAll('.totp-block[data-secret]')) {
+    const secret = block.dataset.secret;
+    const codeEl = block.querySelector('.totp-code');
+    const countdownEl = block.querySelector('.totp-countdown');
+    const ringBar = block.querySelector('.totp-ring-bar');
+    try {
+      const code = await window.TOTP.generateTOTP(secret);
+      codeEl.textContent = code.slice(0, 3) + ' ' + code.slice(3);
+    } catch (_) {
+      codeEl.textContent = 'ERROR';
+    }
+    countdownEl.textContent = remaining;
+    const progress = remaining / 30;
+    ringBar.style.strokeDasharray = circumference;
+    ringBar.style.strokeDashoffset = circumference * (1 - progress);
+    ringBar.style.stroke = remaining <= 5 ? '#ef4444' : '#22c55e';
+  }
+
+  startTotpLoop();
 }
 
 function renderList(accounts, filter = '') {
@@ -37,21 +99,36 @@ function renderList(accounts, filter = '') {
     list.innerHTML = accounts.length === 0
       ? `<div class="empty-state"><p>등록된 계정이 없습니다.</p><button id="btn-add-first" class="btn-primary">+ 첫 계정 추가</button></div>`
       : `<div class="empty-state"><p>검색 결과가 없습니다.</p></div>`;
-
     document.getElementById('btn-add-first')?.addEventListener('click', openOptions);
     return;
   }
 
-  list.innerHTML = filtered.map((acct, i) => {
+  const circumference = 2 * Math.PI * 9;
+
+  list.innerHTML = filtered.map(acct => {
     const color = getColor(acct.name);
     const initials = getInitials(acct.name);
     const idx = accounts.indexOf(acct);
+    const totpBlock = acct.mfaSecret ? `
+      <div class="totp-block" data-secret="${escHtml(acct.mfaSecret)}">
+        <span class="totp-code">······</span>
+        <div class="totp-timer">
+          <svg class="totp-ring" viewBox="0 0 20 20">
+            <circle class="totp-ring-bg" cx="10" cy="10" r="9"/>
+            <circle class="totp-ring-bar" cx="10" cy="10" r="9"
+              style="stroke-dasharray:${circumference};stroke-dashoffset:0;transform:rotate(-90deg);transform-origin:50% 50%"/>
+          </svg>
+          <span class="totp-countdown">30</span>
+        </div>
+      </div>` : '';
+
     return `
       <div class="account-item" data-idx="${idx}">
         <div class="account-avatar" style="background:${color}">${initials}</div>
         <div class="account-info">
           <div class="account-name">${escHtml(acct.name)}</div>
           <div class="account-meta">${escHtml(acct.accountId)} · ${escHtml(acct.username)}</div>
+          ${totpBlock}
         </div>
         <div class="account-actions">
           <button class="action-btn delete" data-idx="${idx}" title="삭제">🗑</button>
@@ -62,19 +139,18 @@ function renderList(accounts, filter = '') {
     `;
   }).join('');
 
+  // 이벤트 바인딩
   list.querySelectorAll('.login-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      const acct = accounts[+btn.dataset.idx];
-      doLogin(acct);
+      doLogin(accounts[+btn.dataset.idx]);
     });
   });
 
   list.querySelectorAll('.account-item').forEach(item => {
     item.addEventListener('click', e => {
       if (e.target.closest('button')) return;
-      const acct = accounts[+item.dataset.idx];
-      doLogin(acct);
+      doLogin(accounts[+item.dataset.idx]);
     });
   });
 
@@ -86,6 +162,7 @@ function renderList(accounts, filter = '') {
       accounts.splice(idx, 1);
       chrome.storage.local.set({ accounts });
       renderList(accounts, document.getElementById('search').value);
+      initTotp();
     });
   });
 
@@ -95,6 +172,22 @@ function renderList(accounts, filter = '') {
       chrome.runtime.openOptionsPage();
     });
   });
+
+  // TOTP 코드 클릭 시 클립보드 복사
+  list.querySelectorAll('.totp-code').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const raw = el.textContent.replace(/\s/g, '');
+      if (/^\d{6}$/.test(raw)) {
+        navigator.clipboard.writeText(raw);
+        el.dataset.orig = el.textContent;
+        el.textContent = '복사됨!';
+        setTimeout(() => { el.textContent = el.dataset.orig; }, 1200);
+      }
+    });
+  });
+
+  initTotp();
 }
 
 function doLogin(acct) {
@@ -108,10 +201,6 @@ function doLogin(acct) {
 function openOptions() {
   chrome.runtime.openOptionsPage();
   window.close();
-}
-
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

@@ -42,6 +42,22 @@ async function waitAndFill(acct) {
     clickSubmit();
     return true;
   });
+
+  // Step 4: MFA 코드 입력 화면 (설정된 경우에만)
+  if (acct.mfaSecret) {
+    await fillStep(async () => {
+      const mfaField = document.getElementById('mfaCode') ||
+                       document.querySelector('input[name="mfaCode"]') ||
+                       document.querySelector('input[autocomplete="one-time-code"]') ||
+                       document.querySelector('input[placeholder*="MFA"]') ||
+                       document.querySelector('input[placeholder*="mfa"]');
+      if (!mfaField || mfaField.offsetParent === null) return false;
+      const code = await window.TOTP.generateTOTP(acct.mfaSecret);
+      setValue(mfaField, code);
+      clickSubmit();
+      return true;
+    }, 12000);
+  }
 }
 
 function setValue(el, value) {

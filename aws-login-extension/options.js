@@ -20,6 +20,7 @@ function escHtml(str) {
 
 let accounts = [];
 let editingIdx = null;
+let mfaPreviewTimer = null;
 
 async function load() {
   return new Promise(r => chrome.storage.local.get('accounts', d => {
@@ -42,11 +43,12 @@ function renderSidebar() {
     const color = getColor(a.name);
     const initials = getInitials(a.name);
     const active = editingIdx === i ? ' active' : '';
+    const mfaBadge = a.mfaSecret ? '<span class="mfa-badge">MFA</span>' : '';
     return `
       <div class="sidebar-item${active}" data-idx="${i}">
         <div class="sidebar-avatar" style="background:${color}">${escHtml(initials)}</div>
         <div>
-          <div class="sidebar-name">${escHtml(a.name)}</div>
+          <div class="sidebar-name">${escHtml(a.name)} ${mfaBadge}</div>
           <div class="sidebar-sub">${escHtml(a.accountId)}</div>
         </div>
       </div>
@@ -58,14 +60,55 @@ function renderSidebar() {
   });
 }
 
+// MFA 미리보기 타이머
+function startMfaPreview(secret) {
+  stopMfaPreview();
+  const preview = document.getElementById('mfa-preview');
+  const codeEl = document.getElementById('mfa-code');
+  const countdownEl = document.getElementById('mfa-countdown');
+  const ringBar = document.getElementById('mfa-ring-bar');
+  const circumference = 2 * Math.PI * 11; // r=11
+
+  ringBar.style.strokeDasharray = circumference;
+
+  async function tick() {
+    try {
+      const code = await window.TOTP.generateTOTP(secret);
+      const remaining = window.TOTP.totpRemaining();
+      codeEl.textContent = code.slice(0, 3) + ' ' + code.slice(3);
+      countdownEl.textContent = remaining;
+      const progress = remaining / 30;
+      ringBar.style.strokeDashoffset = circumference * (1 - progress);
+      ringBar.style.stroke = remaining <= 5 ? '#ef4444' : '#22c55e';
+    } catch (e) {
+      codeEl.textContent = 'ERROR';
+    }
+  }
+
+  preview.classList.remove('hidden');
+  tick();
+  mfaPreviewTimer = setInterval(tick, 1000);
+}
+
+function stopMfaPreview() {
+  if (mfaPreviewTimer) {
+    clearInterval(mfaPreviewTimer);
+    mfaPreviewTimer = null;
+  }
+  document.getElementById('mfa-preview')?.classList.add('hidden');
+}
+
 function openNew() {
   editingIdx = null;
+  stopMfaPreview();
   document.getElementById('form-title').textContent = '새 계정 추가';
   document.getElementById('f-name').value = '';
   document.getElementById('f-account-id').value = '';
   document.getElementById('f-username').value = '';
   document.getElementById('f-password').value = '';
+  document.getElementById('f-mfa-secret').value = '';
   document.getElementById('f-note').value = '';
+  document.getElementById('mfa-error').classList.add('hidden');
   document.getElementById('btn-delete').classList.add('hidden');
   document.getElementById('form-msg').textContent = '';
   document.getElementById('form-msg').className = 'form-msg';
@@ -76,16 +119,20 @@ function openNew() {
 
 function openEdit(idx) {
   editingIdx = idx;
+  stopMfaPreview();
   const a = accounts[idx];
   document.getElementById('form-title').textContent = '계정 편집';
   document.getElementById('f-name').value = a.name;
   document.getElementById('f-account-id').value = a.accountId;
   document.getElementById('f-username').value = a.username;
   document.getElementById('f-password').value = a.password;
+  document.getElementById('f-mfa-secret').value = a.mfaSecret || '';
   document.getElementById('f-note').value = a.note || '';
+  document.getElementById('mfa-error').classList.add('hidden');
   document.getElementById('btn-delete').classList.remove('hidden');
   document.getElementById('form-msg').textContent = '';
   document.getElementById('form-msg').className = 'form-msg';
+  if (a.mfaSecret) startMfaPreview(a.mfaSecret);
   showForm();
   renderSidebar();
 }
@@ -96,6 +143,7 @@ function showForm() {
 }
 
 function hideForm() {
+  stopMfaPreview();
   document.getElementById('form-area').classList.add('hidden');
   document.getElementById('empty-main').classList.remove('hidden');
   editingIdx = null;
@@ -113,19 +161,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderSidebar();
 
   document.getElementById('btn-new').addEventListener('click', openNew);
-
   document.getElementById('btn-cancel').addEventListener('click', hideForm);
 
+  // 비밀번호 토글
   document.getElementById('btn-toggle-pw').addEventListener('click', () => {
     const pw = document.getElementById('f-password');
     const btn = document.getElementById('btn-toggle-pw');
-    if (pw.type === 'password') {
-      pw.type = 'text';
-      btn.textContent = '🙈';
-    } else {
-      pw.type = 'password';
-      btn.textContent = '👁';
-    }
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+    btn.textContent = pw.type === 'password' ? '👁' : '🙈';
+  });
+
+  // MFA 비밀키 토글
+  document.getElementById('btn-toggle-mfa').addEventListener('click', () => {
+    const mfa = document.getElementById('f-mfa-secret');
+    const btn = document.getElementById('btn-toggle-mfa');
+    mfa.type = mfa.type === 'password' ? 'text' : 'password';
+    btn.textContent = mfa.type === 'password' ? '👁' : '🙈';
+  });
+
+  // MFA 비밀키 입력 시 실시간 유효성 검사 + 미리보기
+  let mfaDebounce = null;
+  document.getElementById('f-mfa-secret').addEventListener('input', e => {
+    const secret = e.target.value.trim();
+    const errorEl = document.getElementById('mfa-error');
+    stopMfaPreview();
+    clearTimeout(mfaDebounce);
+    if (!secret) { errorEl.classList.add('hidden'); return; }
+    mfaDebounce = setTimeout(() => {
+      if (!window.TOTP.isValidBase32(secret)) {
+        errorEl.classList.remove('hidden');
+      } else {
+        errorEl.classList.add('hidden');
+        startMfaPreview(secret);
+      }
+    }, 400);
   });
 
   document.getElementById('btn-save').addEventListener('click', async () => {
@@ -133,6 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const accountId = document.getElementById('f-account-id').value.trim();
     const username = document.getElementById('f-username').value.trim();
     const password = document.getElementById('f-password').value;
+    const mfaSecret = document.getElementById('f-mfa-secret').value.trim().toUpperCase().replace(/\s/g, '') || '';
     const note = document.getElementById('f-note').value.trim();
 
     if (!name)      return showMsg('고객사 이름을 입력하세요.', 'error');
@@ -140,8 +210,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!/^\d{12}$/.test(accountId)) return showMsg('계정 ID는 12자리 숫자여야 합니다.', 'error');
     if (!username)  return showMsg('IAM 사용자 이름을 입력하세요.', 'error');
     if (!password)  return showMsg('비밀번호를 입력하세요.', 'error');
+    if (mfaSecret && !window.TOTP.isValidBase32(mfaSecret)) return showMsg('MFA 비밀키 형식이 올바르지 않습니다.', 'error');
 
-    const entry = { name, accountId, username, password, note };
+    const entry = { name, accountId, username, password, mfaSecret, note };
 
     if (editingIdx === null) {
       accounts.push(entry);

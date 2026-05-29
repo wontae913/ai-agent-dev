@@ -44,6 +44,26 @@
         </div>
 
         <div class="form-group">
+          <label>MFA 비밀키 (선택 — TOTP)</label>
+          <div class="pw-wrap">
+            <input type="password" id="f-mfa-secret" placeholder="Base32 시크릿 (예: JBSWY3DPEHPK3PXP)" autocomplete="off">
+            <button type="button" id="btn-toggle-mfa" class="toggle-pw">👁</button>
+          </div>
+          <div id="mfa-preview" class="mfa-preview hidden">
+            <span class="mfa-label">현재 코드</span>
+            <span id="mfa-code" class="mfa-code">------</span>
+            <div class="mfa-timer-wrap">
+              <svg class="mfa-ring" viewBox="0 0 28 28">
+                <circle class="ring-bg" cx="14" cy="14" r="11"/>
+                <circle id="mfa-ring-bar" class="ring-bar" cx="14" cy="14" r="11"/>
+              </svg>
+              <span id="mfa-countdown" class="mfa-countdown">30</span>
+            </div>
+          </div>
+          <div id="mfa-error" class="mfa-error hidden">유효하지 않은 Base32 형식입니다.</div>
+        </div>
+
+        <div class="form-group">
           <label>메모 (선택)</label>
           <input type="text" id="f-note" placeholder="리전, 담당자 등" autocomplete="off">
         </div>
@@ -64,6 +84,7 @@
     </div>
   </div>
 
+  <script src="totp.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

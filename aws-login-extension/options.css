@@ -245,6 +245,89 @@ body {
 
 .hidden { display: none !important; }
 
+/* MFA preview */
+.mfa-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #0d1a0d;
+  border: 1px solid #166534;
+  border-radius: 8px;
+}
+
+.mfa-label {
+  font-size: 11px;
+  color: #4ade80;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mfa-code {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #4ade80;
+  letter-spacing: 0.12em;
+  flex: 1;
+}
+
+.mfa-timer-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+}
+
+.mfa-ring {
+  width: 28px;
+  height: 28px;
+  transform: rotate(-90deg);
+}
+
+.ring-bg {
+  fill: none;
+  stroke: #1a2e1a;
+  stroke-width: 3;
+}
+
+.ring-bar {
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.9s linear, stroke 0.3s;
+}
+
+.mfa-countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #4ade80;
+}
+
+.mfa-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #ef4444;
+}
+
+.mfa-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  background: #14532d;
+  color: #4ade80;
+  border-radius: 4px;
+  vertical-align: middle;
+  letter-spacing: 0.05em;
+}
+
 .empty-main {
   text-align: center;
   color: #475569;
