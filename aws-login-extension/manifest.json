@@ -15,7 +15,7 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://signin.aws.amazon.com/*"],
+      "matches": ["https://signin.aws.amazon.com/*", "https://*.signin.aws.amazon.com/*"],
       "js": ["totp.js", "content.js"],
       "run_at": "document_idle"
     }

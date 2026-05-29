@@ -191,7 +191,8 @@ function renderList(accounts, filter = '') {
 }
 
 function doLogin(acct) {
-  const url = `https://signin.aws.amazon.com/signin?account=${encodeURIComponent(acct.accountId)}`;
+  // 계정 전용 로그인 URL — 서브도메인으로 계정 ID를 넣으면 계정 입력 단계가 생략됨
+  const url = `https://${acct.accountId}.signin.aws.amazon.com/console/`;
   chrome.storage.local.set({ pendingLogin: acct }, () => {
     chrome.tabs.create({ url });
     window.close();

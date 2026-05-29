@@ -12,18 +12,8 @@
 })();
 
 async function waitAndFill(acct) {
-  // Step 1: 계정 ID 입력 화면
-  await fillStep(() => {
-    const accountField = document.getElementById('resolving_input') ||
-                         document.querySelector('input[name="account"]') ||
-                         document.querySelector('#account');
-    if (!accountField) return false;
-    setValue(accountField, acct.accountId);
-    clickNext();
-    return true;
-  });
-
-  // Step 2: 사용자 이름 입력 화면
+  // Step 1: 사용자 이름 입력 화면
+  // (ACCOUNT_ID.signin.aws.amazon.com/console/ URL을 쓰면 계정 입력 단계가 없음)
   await fillStep(() => {
     const userField = document.getElementById('username') ||
                       document.querySelector('input[name="username"]');
@@ -33,7 +23,7 @@ async function waitAndFill(acct) {
     return true;
   });
 
-  // Step 3: 비밀번호 입력 화면
+  // Step 2: 비밀번호 입력 화면
   await fillStep(() => {
     const pwField = document.getElementById('password') ||
                     document.querySelector('input[type="password"]');
@@ -43,7 +33,7 @@ async function waitAndFill(acct) {
     return true;
   });
 
-  // Step 4: MFA 코드 입력 화면 (설정된 경우에만)
+  // Step 3: MFA 코드 입력 화면 (설정된 경우에만)
   if (acct.mfaSecret) {
     await fillStep(async () => {
       const mfaField = document.getElementById('mfaCode') ||
