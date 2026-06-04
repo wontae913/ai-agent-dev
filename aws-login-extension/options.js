@@ -74,6 +74,8 @@ function save() {
   return new Promise(r => chrome.storage.local.set({ accounts }, r));
 }
 
+let dragSrcIdx = null;
+
 function renderSidebar() {
   const el = document.getElementById('account-sidebar-list');
   if (accounts.length === 0) {
@@ -86,7 +88,8 @@ function renderSidebar() {
     const active = editingIdx === i ? ' active' : '';
     const mfaBadge = a.mfaSecret ? '<span class="mfa-badge">MFA</span>' : '';
     return `
-      <div class="sidebar-item${active}" data-idx="${i}">
+      <div class="sidebar-item${active}" data-idx="${i}" draggable="true">
+        <div class="drag-handle" title="드래그하여 순서 변경">⠿</div>
         <div class="sidebar-avatar" style="background:${color}">${escHtml(initials)}</div>
         <div>
           <div class="sidebar-name">${escHtml(a.name)} ${mfaBadge}</div>
@@ -98,6 +101,43 @@ function renderSidebar() {
 
   el.querySelectorAll('.sidebar-item').forEach(item => {
     item.addEventListener('click', () => openEdit(+item.dataset.idx));
+
+    item.addEventListener('dragstart', e => {
+      dragSrcIdx = +item.dataset.idx;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      el.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('drag-over'));
+    });
+
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+
+    item.addEventListener('drop', async e => {
+      e.preventDefault();
+      const targetIdx = +item.dataset.idx;
+      if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+
+      const moved = accounts.splice(dragSrcIdx, 1)[0];
+      accounts.splice(targetIdx, 0, moved);
+
+      if (editingIdx === dragSrcIdx) editingIdx = targetIdx;
+      else if (editingIdx !== null) {
+        if (dragSrcIdx < editingIdx && targetIdx >= editingIdx) editingIdx--;
+        else if (dragSrcIdx > editingIdx && targetIdx <= editingIdx) editingIdx++;
+      }
+
+      dragSrcIdx = null;
+      await save();
+      renderSidebar();
+    });
   });
 }
 

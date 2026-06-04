@@ -53,12 +53,26 @@ body {
   padding: 9px 10px;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.12s, opacity 0.12s;
   margin-bottom: 2px;
 }
 
 .sidebar-item:hover { background: #f1f5f9; }
 .sidebar-item.active { background: #eff6ff; }
+.sidebar-item.dragging { opacity: 0.4; }
+.sidebar-item.drag-over { background: #dbeafe; outline: 1.5px dashed #3b82f6; }
+
+.drag-handle {
+  font-size: 14px;
+  color: #cbd5e1;
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.sidebar-item:hover .drag-handle { color: #94a3b8; }
 
 .sidebar-avatar {
   width: 32px;
