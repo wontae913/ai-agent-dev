@@ -147,10 +147,11 @@ function renderList(accounts, filter = '') {
     });
   });
 
+  // 로그인 버튼을 제외한 카드 영역 클릭 시 OTP 코드 복사
   list.querySelectorAll('.account-item').forEach(item => {
     item.addEventListener('click', e => {
       if (e.target.closest('button')) return;
-      doLogin(accounts[+item.dataset.idx]);
+      copyTotp(item.querySelector('.totp-code'));
     });
   });
 
@@ -177,17 +178,22 @@ function renderList(accounts, filter = '') {
   list.querySelectorAll('.totp-code').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
-      const raw = el.textContent.replace(/\s/g, '');
-      if (/^\d{6}$/.test(raw)) {
-        navigator.clipboard.writeText(raw);
-        el.dataset.orig = el.textContent;
-        el.textContent = '복사됨!';
-        setTimeout(() => { el.textContent = el.dataset.orig; }, 1200);
-      }
+      copyTotp(el);
     });
   });
 
   initTotp();
+}
+
+// TOTP 코드 엘리먼트의 숫자를 클립보드에 복사하고 잠깐 피드백 표시
+function copyTotp(el) {
+  if (!el) return;
+  const raw = el.textContent.replace(/\s/g, '');
+  if (!/^\d{6}$/.test(raw)) return;
+  navigator.clipboard.writeText(raw);
+  el.dataset.orig = el.textContent;
+  el.textContent = '복사됨!';
+  setTimeout(() => { el.textContent = el.dataset.orig; }, 1200);
 }
 
 function doLogin(acct) {
