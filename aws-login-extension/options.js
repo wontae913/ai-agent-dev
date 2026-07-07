@@ -241,6 +241,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   await load();
   renderSidebar();
 
+  // Ctrl+Alt+N → '새 계정 추가' 폼 열기 (관리 페이지에서 동작)
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.altKey && !e.shiftKey && e.code === 'KeyN') {
+      e.preventDefault();
+      openNew();
+    }
+  });
+
   document.getElementById('btn-new').addEventListener('click', openNew);
   document.getElementById('btn-cancel').addEventListener('click', hideForm);
 
