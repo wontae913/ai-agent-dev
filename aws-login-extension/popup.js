@@ -86,14 +86,18 @@ async function initTotp() {
   startTotpLoop();
 }
 
+// 검색어로 계정 목록 필터링 (renderList와 단축키 로그인이 공유)
+function filterAccounts(accounts, filter) {
+  if (!filter) return accounts;
+  const f = filter.toLowerCase();
+  return accounts.filter(a =>
+    a.name.toLowerCase().includes(f) || a.accountId.includes(filter)
+  );
+}
+
 function renderList(accounts, filter = '') {
   const list = document.getElementById('account-list');
-  const filtered = filter
-    ? accounts.filter(a =>
-        a.name.toLowerCase().includes(filter.toLowerCase()) ||
-        a.accountId.includes(filter)
-      )
-    : accounts;
+  const filtered = filterAccounts(accounts, filter);
 
   if (filtered.length === 0) {
     list.innerHTML = accounts.length === 0
@@ -147,10 +151,11 @@ function renderList(accounts, filter = '') {
     });
   });
 
+  // 로그인 버튼을 제외한 카드 영역 클릭 시 OTP 코드 복사
   list.querySelectorAll('.account-item').forEach(item => {
     item.addEventListener('click', e => {
       if (e.target.closest('button')) return;
-      doLogin(accounts[+item.dataset.idx]);
+      copyTotp(item.querySelector('.totp-code'));
     });
   });
 
@@ -177,17 +182,22 @@ function renderList(accounts, filter = '') {
   list.querySelectorAll('.totp-code').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
-      const raw = el.textContent.replace(/\s/g, '');
-      if (/^\d{6}$/.test(raw)) {
-        navigator.clipboard.writeText(raw);
-        el.dataset.orig = el.textContent;
-        el.textContent = '복사됨!';
-        setTimeout(() => { el.textContent = el.dataset.orig; }, 1200);
-      }
+      copyTotp(el);
     });
   });
 
   initTotp();
+}
+
+// TOTP 코드 엘리먼트의 숫자를 클립보드에 복사하고 잠깐 피드백 표시
+function copyTotp(el) {
+  if (!el) return;
+  const raw = el.textContent.replace(/\s/g, '');
+  if (!/^\d{6}$/.test(raw)) return;
+  navigator.clipboard.writeText(raw);
+  el.dataset.orig = el.textContent;
+  el.textContent = '복사됨!';
+  setTimeout(() => { el.textContent = el.dataset.orig; }, 1200);
 }
 
 function doLogin(acct) {
@@ -204,14 +214,67 @@ function openOptions() {
   window.close();
 }
 
+function focusSearch() {
+  const search = document.getElementById('search');
+  if (!search) return;
+  search.focus();
+  search.select();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const accounts = await loadAccounts();
   renderList(accounts);
 
-  document.getElementById('search').addEventListener('input', e => {
+  const search = document.getElementById('search');
+  search.addEventListener('input', e => {
     renderList(accounts, e.target.value);
   });
 
   document.getElementById('btn-add').addEventListener('click', openOptions);
   document.getElementById('btn-options').addEventListener('click', openOptions);
+
+  // 팝업이 열리면 바로 검색창에 포커스
+  focusSearch();
+
+  document.addEventListener('keydown', e => {
+    const inSearch = e.target === search;
+
+    // Alt+N → 계정 관리 페이지 열기
+    if (e.altKey && !e.shiftKey && e.code === 'KeyN') {
+      e.preventDefault();
+      openOptions();
+      return;
+    }
+
+    // 로그인: Alt+1~9 → 현재 검색 결과 기준 N번째 계정
+    // (e.code 사용 — Mac의 Option+숫자 특수문자 문제 회피)
+    if (e.altKey && /^Digit[1-9]$/.test(e.code)) {
+      e.preventDefault();
+      const n = Number(e.code.slice(5));
+      const acct = filterAccounts(accounts, search.value)[n - 1];
+      if (acct) doLogin(acct);
+      return;
+    }
+
+    // 검색창에서 Enter → 검색 결과 첫 번째 계정 로그인
+    if (e.key === 'Enter' && inSearch) {
+      const acct = filterAccounts(accounts, search.value)[0];
+      if (acct) { e.preventDefault(); doLogin(acct); }
+      return;
+    }
+
+    // 검색 바로가기: '/' 또는 Ctrl/Cmd+K 로 언제든 검색창 포커스
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      focusSearch();
+    } else if (e.key === '/' && !inSearch) {
+      e.preventDefault();
+      focusSearch();
+    } else if (e.key === 'Escape' && inSearch && search.value) {
+      // 검색창이 비어있지 않으면 Esc로 검색어 초기화
+      e.preventDefault();
+      search.value = '';
+      renderList(accounts);
+    }
+  });
 });

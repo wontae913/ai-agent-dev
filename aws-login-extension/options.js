@@ -74,19 +74,39 @@ function save() {
   return new Promise(r => chrome.storage.local.set({ accounts }, r));
 }
 
+let dragSrcIdx = null;
+let sidebarFilter = '';
+
 function renderSidebar() {
   const el = document.getElementById('account-sidebar-list');
+
   if (accounts.length === 0) {
-    el.innerHTML = '<div style="padding:16px 8px;color:#475569;font-size:12px;text-align:center;">계정 없음</div>';
+    el.innerHTML = '<div class="sidebar-empty">계정 없음</div>';
     return;
   }
-  el.innerHTML = accounts.map((a, i) => {
+
+  const f = sidebarFilter.trim().toLowerCase();
+  // 실제 accounts 인덱스를 유지한 채 필터링 (data-idx가 클릭/편집/드래그 기준)
+  const items = accounts
+    .map((a, i) => ({ a, i }))
+    .filter(({ a }) => !f || a.name.toLowerCase().includes(f) || a.accountId.includes(sidebarFilter.trim()));
+
+  if (items.length === 0) {
+    el.innerHTML = '<div class="sidebar-empty">검색 결과 없음</div>';
+    return;
+  }
+
+  // 검색 중에는 순서 변경(드래그)을 비활성화 — 필터된 목록에서의 재정렬 혼동 방지
+  const draggable = f ? 'false' : 'true';
+
+  el.innerHTML = items.map(({ a, i }) => {
     const color = getColor(a.name);
     const initials = getInitials(a.name);
     const active = editingIdx === i ? ' active' : '';
     const mfaBadge = a.mfaSecret ? '<span class="mfa-badge">MFA</span>' : '';
     return `
-      <div class="sidebar-item${active}" data-idx="${i}">
+      <div class="sidebar-item${active}" data-idx="${i}" draggable="${draggable}">
+        <div class="drag-handle" title="드래그하여 순서 변경">⠿</div>
         <div class="sidebar-avatar" style="background:${color}">${escHtml(initials)}</div>
         <div>
           <div class="sidebar-name">${escHtml(a.name)} ${mfaBadge}</div>
@@ -98,6 +118,43 @@ function renderSidebar() {
 
   el.querySelectorAll('.sidebar-item').forEach(item => {
     item.addEventListener('click', () => openEdit(+item.dataset.idx));
+
+    item.addEventListener('dragstart', e => {
+      dragSrcIdx = +item.dataset.idx;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      el.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('drag-over'));
+    });
+
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+
+    item.addEventListener('drop', async e => {
+      e.preventDefault();
+      const targetIdx = +item.dataset.idx;
+      if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+
+      const moved = accounts.splice(dragSrcIdx, 1)[0];
+      accounts.splice(targetIdx, 0, moved);
+
+      if (editingIdx === dragSrcIdx) editingIdx = targetIdx;
+      else if (editingIdx !== null) {
+        if (dragSrcIdx < editingIdx && targetIdx >= editingIdx) editingIdx--;
+        else if (dragSrcIdx > editingIdx && targetIdx <= editingIdx) editingIdx++;
+      }
+
+      dragSrcIdx = null;
+      await save();
+      renderSidebar();
+    });
   });
 }
 
@@ -200,6 +257,46 @@ function showMsg(msg, type) {
 document.addEventListener('DOMContentLoaded', async () => {
   await load();
   renderSidebar();
+
+  // 사이드바 계정 검색
+  const sidebarSearch = document.getElementById('sidebar-search');
+  function focusSidebarSearch() {
+    sidebarSearch.focus();
+    sidebarSearch.select();
+  }
+
+  sidebarSearch.addEventListener('input', e => {
+    sidebarFilter = e.target.value;
+    renderSidebar();
+  });
+
+  // 페이지 로드 시 검색창 자동 포커스
+  focusSidebarSearch();
+
+  document.addEventListener('keydown', e => {
+    const tag = e.target.tagName;
+    const inField = tag === 'INPUT' || tag === 'TEXTAREA';
+
+    // Ctrl+Alt+N → '새 계정 추가' 폼 열기
+    if (e.ctrlKey && e.altKey && !e.shiftKey && e.code === 'KeyN') {
+      e.preventDefault();
+      openNew();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      // Ctrl/Cmd+K → 사이드바 검색 포커스
+      e.preventDefault();
+      focusSidebarSearch();
+    } else if (e.key === '/' && !inField) {
+      // '/' → 검색 포커스 (입력 필드에 있지 않을 때)
+      e.preventDefault();
+      focusSidebarSearch();
+    } else if (e.key === 'Escape' && e.target === sidebarSearch && sidebarSearch.value) {
+      // Esc → 검색창에서 검색어 초기화
+      e.preventDefault();
+      sidebarSearch.value = '';
+      sidebarFilter = '';
+      renderSidebar();
+    }
+  });
 
   document.getElementById('btn-new').addEventListener('click', openNew);
   document.getElementById('btn-cancel').addEventListener('click', hideForm);
