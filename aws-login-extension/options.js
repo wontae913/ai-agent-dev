@@ -75,20 +75,37 @@ function save() {
 }
 
 let dragSrcIdx = null;
+let sidebarFilter = '';
 
 function renderSidebar() {
   const el = document.getElementById('account-sidebar-list');
+
   if (accounts.length === 0) {
-    el.innerHTML = '<div style="padding:16px 8px;color:#475569;font-size:12px;text-align:center;">계정 없음</div>';
+    el.innerHTML = '<div class="sidebar-empty">계정 없음</div>';
     return;
   }
-  el.innerHTML = accounts.map((a, i) => {
+
+  const f = sidebarFilter.trim().toLowerCase();
+  // 실제 accounts 인덱스를 유지한 채 필터링 (data-idx가 클릭/편집/드래그 기준)
+  const items = accounts
+    .map((a, i) => ({ a, i }))
+    .filter(({ a }) => !f || a.name.toLowerCase().includes(f) || a.accountId.includes(sidebarFilter.trim()));
+
+  if (items.length === 0) {
+    el.innerHTML = '<div class="sidebar-empty">검색 결과 없음</div>';
+    return;
+  }
+
+  // 검색 중에는 순서 변경(드래그)을 비활성화 — 필터된 목록에서의 재정렬 혼동 방지
+  const draggable = f ? 'false' : 'true';
+
+  el.innerHTML = items.map(({ a, i }) => {
     const color = getColor(a.name);
     const initials = getInitials(a.name);
     const active = editingIdx === i ? ' active' : '';
     const mfaBadge = a.mfaSecret ? '<span class="mfa-badge">MFA</span>' : '';
     return `
-      <div class="sidebar-item${active}" data-idx="${i}" draggable="true">
+      <div class="sidebar-item${active}" data-idx="${i}" draggable="${draggable}">
         <div class="drag-handle" title="드래그하여 순서 변경">⠿</div>
         <div class="sidebar-avatar" style="background:${color}">${escHtml(initials)}</div>
         <div>
@@ -247,6 +264,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       openNew();
     }
+  });
+
+  // 사이드바 계정 검색
+  document.getElementById('sidebar-search').addEventListener('input', e => {
+    sidebarFilter = e.target.value;
+    renderSidebar();
   });
 
   document.getElementById('btn-new').addEventListener('click', openNew);

@@ -37,6 +37,37 @@ body {
 
 .sidebar-header .logo { font-size: 20px; }
 
+.sidebar-search {
+  padding: 10px 12px 6px;
+}
+
+.sidebar-search input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #0f172a;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.sidebar-search input:focus {
+  background: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px #dbeafe;
+}
+
+.sidebar-search input::placeholder { color: #cbd5e1; }
+
+.sidebar-empty {
+  padding: 16px 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: center;
+}
+
 #account-sidebar-list {
   flex: 1;
   overflow-y: auto;
