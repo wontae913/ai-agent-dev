@@ -258,18 +258,44 @@ document.addEventListener('DOMContentLoaded', async () => {
   await load();
   renderSidebar();
 
-  // Ctrl+Alt+N → '새 계정 추가' 폼 열기 (관리 페이지에서 동작)
+  // 사이드바 계정 검색
+  const sidebarSearch = document.getElementById('sidebar-search');
+  function focusSidebarSearch() {
+    sidebarSearch.focus();
+    sidebarSearch.select();
+  }
+
+  sidebarSearch.addEventListener('input', e => {
+    sidebarFilter = e.target.value;
+    renderSidebar();
+  });
+
+  // 페이지 로드 시 검색창 자동 포커스
+  focusSidebarSearch();
+
   document.addEventListener('keydown', e => {
+    const tag = e.target.tagName;
+    const inField = tag === 'INPUT' || tag === 'TEXTAREA';
+
+    // Ctrl+Alt+N → '새 계정 추가' 폼 열기
     if (e.ctrlKey && e.altKey && !e.shiftKey && e.code === 'KeyN') {
       e.preventDefault();
       openNew();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      // Ctrl/Cmd+K → 사이드바 검색 포커스
+      e.preventDefault();
+      focusSidebarSearch();
+    } else if (e.key === '/' && !inField) {
+      // '/' → 검색 포커스 (입력 필드에 있지 않을 때)
+      e.preventDefault();
+      focusSidebarSearch();
+    } else if (e.key === 'Escape' && e.target === sidebarSearch && sidebarSearch.value) {
+      // Esc → 검색창에서 검색어 초기화
+      e.preventDefault();
+      sidebarSearch.value = '';
+      sidebarFilter = '';
+      renderSidebar();
     }
-  });
-
-  // 사이드바 계정 검색
-  document.getElementById('sidebar-search').addEventListener('input', e => {
-    sidebarFilter = e.target.value;
-    renderSidebar();
   });
 
   document.getElementById('btn-new').addEventListener('click', openNew);
