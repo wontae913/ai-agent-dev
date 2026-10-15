@@ -14,13 +14,19 @@
 
 이 확장은 스토어에 등록되지 않은 **로컬(언팩) 확장**으로 설치합니다.
 
-1. 이 저장소를 내려받거나 클론합니다.
+1. 사용자 폴더(예: `C:\Users\<사용자>`)에서 저장소를 `login-ops` 폴더로 클론합니다.
+   ```bash
+   git clone https://github.com/wontae913/ai-agent-dev.git login-ops
+   ```
 2. Chrome 주소창에 `chrome://extensions` 입력 후 이동합니다.
 3. 오른쪽 위 **개발자 모드(Developer mode)** 를 켭니다.
-4. **압축해제된 확장 프로그램을 로드(Load unpacked)** 클릭 → `aws-login-extension` 폴더(이 README와 `manifest.json`이 있는 폴더)를 선택합니다.
+4. **압축해제된 확장 프로그램을 로드(Load unpacked)** 클릭 → `login-ops\aws-login-extension` 폴더(이 README와 `manifest.json`이 있는 폴더)를 선택합니다.
+   - 예: `C:\Users\<사용자>\login-ops\aws-login-extension`
 5. 툴바에 ☁ 아이콘이 나타나면 완료입니다. (핀 고정 권장)
 
 > 코드를 수정한 뒤에는 `chrome://extensions`에서 해당 확장의 **새로고침(⟳)** 버튼을 눌러야 반영됩니다.
+
+> ⚠️ 언팩 확장의 ID는 **폴더 경로로 정해집니다.** 폴더를 옮기거나 다른 경로에서 다시 로드하면 다른 확장으로 인식되어 **저장된 계정 목록이 따라오지 않습니다.** 경로를 바꿀 때는 기존 확장에서 **⬆ 내보내기** → 새 경로에서 로드 → **⬇ 가져오기** 순서로 옮기세요.
 
 ---
 
