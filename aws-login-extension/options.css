@@ -346,7 +346,29 @@ body {
   color: #15803d;
   letter-spacing: 0.12em;
   flex: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s;
 }
+
+.mfa-code:hover { opacity: 0.7; }
+
+.btn-copy {
+  padding: 5px 12px;
+  background: #fff;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.btn-copy:hover { background: #dcfce7; border-color: #16a34a; }
+.btn-copy.copied { background: #16a34a; border-color: #16a34a; color: #fff; }
+.btn-copy.failed { background: #fee2e2; border-color: #fca5a5; color: #ef4444; }
 
 .mfa-timer-wrap {
   position: relative;

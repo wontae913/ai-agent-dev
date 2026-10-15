@@ -332,6 +332,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.textContent = mfa.type === 'password' ? '👁' : '🙈';
   });
 
+  // MFA 현재 코드 복사 — 자동 로그인이 실패했을 때 직접 입력할 수 있도록
+  const copyMfaBtn = document.getElementById('btn-copy-mfa');
+  let copyResetTimer = null;
+
+  async function copyMfaCode() {
+    const raw = document.getElementById('mfa-code').textContent.replace(/\s/g, '');
+    if (!/^\d{6}$/.test(raw)) return;
+    let ok = true;
+    try {
+      await navigator.clipboard.writeText(raw);
+    } catch (_) {
+      ok = false;
+    }
+    // 코드 숫자는 1초마다 갱신되므로 피드백은 버튼에 표시
+    copyMfaBtn.textContent = ok ? '복사됨!' : '복사 실패';
+    copyMfaBtn.classList.toggle('copied', ok);
+    copyMfaBtn.classList.toggle('failed', !ok);
+    clearTimeout(copyResetTimer);
+    copyResetTimer = setTimeout(() => {
+      copyMfaBtn.textContent = '복사';
+      copyMfaBtn.classList.remove('copied', 'failed');
+    }, 1200);
+  }
+
+  copyMfaBtn.addEventListener('click', copyMfaCode);
+  document.getElementById('mfa-code').addEventListener('click', copyMfaCode);
+
   // MFA 비밀키 입력 시 실시간 유효성 검사 + 미리보기
   let mfaDebounce = null;
   document.getElementById('f-mfa-secret').addEventListener('input', e => {
