@@ -387,8 +387,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('btn-delete').addEventListener('click', async () => {
     if (editingIdx === null) return;
-    const name = accounts[editingIdx].name;
-    if (!confirm(`"${name}" 계정을 삭제하시겠습니까?`)) return;
+    const a = accounts[editingIdx];
+    const detail = `고객사: ${a.name}\n계정 ID: ${a.accountId}\nIAM 사용자: ${a.username}`;
+    if (!confirm(`다음 계정을 삭제하시겠습니까? 되돌릴 수 없습니다.\n\n${detail}`)) return;
     accounts.splice(editingIdx, 1);
     await save();
     hideForm();

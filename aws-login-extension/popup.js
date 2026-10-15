@@ -163,7 +163,7 @@ function renderList(accounts, filter = '') {
     btn.addEventListener('click', async e => {
       e.stopPropagation();
       const idx = +btn.dataset.idx;
-      if (!confirm(`"${accounts[idx].name}" 계정을 삭제하시겠습니까?`)) return;
+      if (!(await confirmDelete(accounts[idx]))) return;
       accounts.splice(idx, 1);
       chrome.storage.local.set({ accounts });
       renderList(accounts, document.getElementById('search').value);
@@ -198,6 +198,50 @@ function copyTotp(el) {
   el.dataset.orig = el.textContent;
   el.textContent = '복사됨!';
   setTimeout(() => { el.textContent = el.dataset.orig; }, 1200);
+}
+
+// 팝업 안에 삭제 확인 모달을 띄우고 삭제할 계정 정보를 보여줌
+// (팝업이 좁아 기본 confirm 대화상자는 내용이 잘림)
+function confirmDelete(acct) {
+  const modal = document.getElementById('confirm-modal');
+  const okBtn = document.getElementById('confirm-ok');
+  const cancelBtn = document.getElementById('confirm-cancel');
+
+  document.getElementById('confirm-detail').innerHTML = `
+    <dt>고객사</dt><dd>${escHtml(acct.name)}</dd>
+    <dt>계정 ID</dt><dd>${escHtml(acct.accountId)}</dd>
+    <dt>IAM 사용자</dt><dd>${escHtml(acct.username)}</dd>
+    <dt>MFA</dt><dd>${acct.mfaSecret ? '설정됨' : '없음'}</dd>
+  `;
+  modal.classList.remove('hidden');
+  cancelBtn.focus(); // 실수로 Enter를 눌러도 삭제되지 않도록 취소에 기본 포커스
+
+  return new Promise(resolve => {
+    const close = result => {
+      modal.classList.add('hidden');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey, true);
+      resolve(result);
+    };
+    const onOk = () => close(true);
+    const onCancel = () => close(false);
+    const onBackdrop = e => { if (e.target === modal) close(false); };
+    // 모달이 떠 있는 동안 팝업 전역 단축키(Alt+숫자, '/' 등)가 동작하지 않도록 캡처 단계에서 차단
+    const onKey = e => {
+      e.stopPropagation();
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close(false);
+      }
+    };
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey, true);
+  });
 }
 
 function doLogin(acct) {
