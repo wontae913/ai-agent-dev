@@ -86,14 +86,18 @@ async function initTotp() {
   startTotpLoop();
 }
 
+// 검색어로 계정 목록 필터링 (renderList와 단축키 로그인이 공유)
+function filterAccounts(accounts, filter) {
+  if (!filter) return accounts;
+  const f = filter.toLowerCase();
+  return accounts.filter(a =>
+    a.name.toLowerCase().includes(f) || a.accountId.includes(filter)
+  );
+}
+
 function renderList(accounts, filter = '') {
   const list = document.getElementById('account-list');
-  const filtered = filter
-    ? accounts.filter(a =>
-        a.name.toLowerCase().includes(filter.toLowerCase()) ||
-        a.accountId.includes(filter)
-      )
-    : accounts;
+  const filtered = filterAccounts(accounts, filter);
 
   if (filtered.length === 0) {
     list.innerHTML = accounts.length === 0
@@ -147,10 +151,11 @@ function renderList(accounts, filter = '') {
     });
   });
 
+  // 로그인 버튼을 제외한 카드 영역 클릭 시 OTP 코드 복사
   list.querySelectorAll('.account-item').forEach(item => {
     item.addEventListener('click', e => {
       if (e.target.closest('button')) return;
-      doLogin(accounts[+item.dataset.idx]);
+      copyTotp(item.querySelector('.totp-code'));
     });
   });
 
@@ -158,7 +163,7 @@ function renderList(accounts, filter = '') {
     btn.addEventListener('click', async e => {
       e.stopPropagation();
       const idx = +btn.dataset.idx;
-      if (!confirm(`"${accounts[idx].name}" 계정을 삭제하시겠습니까?`)) return;
+      if (!(await confirmDelete(accounts[idx]))) return;
       accounts.splice(idx, 1);
       chrome.storage.local.set({ accounts });
       renderList(accounts, document.getElementById('search').value);
@@ -169,7 +174,7 @@ function renderList(accounts, filter = '') {
   list.querySelectorAll('[data-action="edit"]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      chrome.runtime.openOptionsPage();
+      openEditPage(+btn.dataset.idx);
     });
   });
 
@@ -177,17 +182,66 @@ function renderList(accounts, filter = '') {
   list.querySelectorAll('.totp-code').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
-      const raw = el.textContent.replace(/\s/g, '');
-      if (/^\d{6}$/.test(raw)) {
-        navigator.clipboard.writeText(raw);
-        el.dataset.orig = el.textContent;
-        el.textContent = '복사됨!';
-        setTimeout(() => { el.textContent = el.dataset.orig; }, 1200);
-      }
+      copyTotp(el);
     });
   });
 
   initTotp();
+}
+
+// TOTP 코드 엘리먼트의 숫자를 클립보드에 복사하고 잠깐 피드백 표시
+function copyTotp(el) {
+  if (!el) return;
+  const raw = el.textContent.replace(/\s/g, '');
+  if (!/^\d{6}$/.test(raw)) return;
+  navigator.clipboard.writeText(raw);
+  el.dataset.orig = el.textContent;
+  el.textContent = '복사됨!';
+  setTimeout(() => { el.textContent = el.dataset.orig; }, 1200);
+}
+
+// 팝업 안에 삭제 확인 모달을 띄우고 삭제할 계정 정보를 보여줌
+// (팝업이 좁아 기본 confirm 대화상자는 내용이 잘림)
+function confirmDelete(acct) {
+  const modal = document.getElementById('confirm-modal');
+  const okBtn = document.getElementById('confirm-ok');
+  const cancelBtn = document.getElementById('confirm-cancel');
+
+  document.getElementById('confirm-detail').innerHTML = `
+    <dt>고객사</dt><dd>${escHtml(acct.name)}</dd>
+    <dt>계정 ID</dt><dd>${escHtml(acct.accountId)}</dd>
+    <dt>IAM 사용자</dt><dd>${escHtml(acct.username)}</dd>
+    <dt>MFA</dt><dd>${acct.mfaSecret ? '설정됨' : '없음'}</dd>
+  `;
+  modal.classList.remove('hidden');
+  cancelBtn.focus(); // 실수로 Enter를 눌러도 삭제되지 않도록 취소에 기본 포커스
+
+  return new Promise(resolve => {
+    const close = result => {
+      modal.classList.add('hidden');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey, true);
+      resolve(result);
+    };
+    const onOk = () => close(true);
+    const onCancel = () => close(false);
+    const onBackdrop = e => { if (e.target === modal) close(false); };
+    // 모달이 떠 있는 동안 팝업 전역 단축키(Alt+숫자, '/' 등)가 동작하지 않도록 캡처 단계에서 차단
+    const onKey = e => {
+      e.stopPropagation();
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close(false);
+      }
+    };
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey, true);
+  });
 }
 
 function doLogin(acct) {
@@ -204,14 +258,75 @@ function openOptions() {
   window.close();
 }
 
+// 관리 페이지를 열면서 해당 계정의 편집 폼을 바로 띄움
+function openEditPage(idx) {
+  chrome.storage.local.set({ pendingEditIdx: idx }, () => {
+    chrome.runtime.openOptionsPage();
+    window.close();
+  });
+}
+
+function focusSearch() {
+  const search = document.getElementById('search');
+  if (!search) return;
+  search.focus();
+  search.select();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const accounts = await loadAccounts();
   renderList(accounts);
 
-  document.getElementById('search').addEventListener('input', e => {
+  const search = document.getElementById('search');
+  search.addEventListener('input', e => {
     renderList(accounts, e.target.value);
   });
 
   document.getElementById('btn-add').addEventListener('click', openOptions);
   document.getElementById('btn-options').addEventListener('click', openOptions);
+
+  // 팝업이 열리면 바로 검색창에 포커스
+  focusSearch();
+
+  document.addEventListener('keydown', e => {
+    const inSearch = e.target === search;
+
+    // Alt+N → 계정 관리 페이지 열기
+    if (e.altKey && !e.shiftKey && e.code === 'KeyN') {
+      e.preventDefault();
+      openOptions();
+      return;
+    }
+
+    // 로그인: Alt+1~9 → 현재 검색 결과 기준 N번째 계정
+    // (e.code 사용 — Mac의 Option+숫자 특수문자 문제 회피)
+    if (e.altKey && /^Digit[1-9]$/.test(e.code)) {
+      e.preventDefault();
+      const n = Number(e.code.slice(5));
+      const acct = filterAccounts(accounts, search.value)[n - 1];
+      if (acct) doLogin(acct);
+      return;
+    }
+
+    // 검색창에서 Enter → 검색 결과 첫 번째 계정 로그인
+    if (e.key === 'Enter' && inSearch) {
+      const acct = filterAccounts(accounts, search.value)[0];
+      if (acct) { e.preventDefault(); doLogin(acct); }
+      return;
+    }
+
+    // 검색 바로가기: '/' 또는 Ctrl/Cmd+K 로 언제든 검색창 포커스
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      focusSearch();
+    } else if (e.key === '/' && !inSearch) {
+      e.preventDefault();
+      focusSearch();
+    } else if (e.key === 'Escape' && inSearch && search.value) {
+      // 검색창이 비어있지 않으면 Esc로 검색어 초기화
+      e.preventDefault();
+      search.value = '';
+      renderList(accounts);
+    }
+  });
 });

@@ -12,6 +12,9 @@
         <span class="logo">☁</span>
         <span>AWS 계정 관리</span>
       </div>
+      <div class="sidebar-search">
+        <input type="text" id="sidebar-search" placeholder="계정 검색..." autocomplete="off">
+      </div>
       <div id="account-sidebar-list"></div>
       <button id="btn-new" class="btn-new">+ 새 계정 추가</button>
       <div class="sidebar-io">
@@ -58,7 +61,8 @@
           </div>
           <div id="mfa-preview" class="mfa-preview hidden">
             <span class="mfa-label">현재 코드</span>
-            <span id="mfa-code" class="mfa-code">------</span>
+            <span id="mfa-code" class="mfa-code" title="클릭하여 복사">------</span>
+            <button type="button" id="btn-copy-mfa" class="btn-copy">복사</button>
             <div class="mfa-timer-wrap">
               <svg class="mfa-ring" viewBox="0 0 28 28">
                 <circle class="ring-bg" cx="14" cy="14" r="11"/>
