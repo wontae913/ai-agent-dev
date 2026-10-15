@@ -273,6 +273,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 페이지 로드 시 검색창 자동 포커스
   focusSidebarSearch();
 
+  // 팝업의 ✏ 버튼으로 진입 시 해당 계정 편집 폼 열기
+  function openPendingEdit(idx) {
+    chrome.storage.local.remove('pendingEditIdx');
+    if (typeof idx === 'number' && accounts[idx]) openEdit(idx);
+  }
+
+  chrome.storage.local.get('pendingEditIdx', d => openPendingEdit(d.pendingEditIdx));
+
+  // 관리 페이지가 이미 열려 있으면 새로고침 없이 탭만 포커스되므로 변경 감지로 처리
+  chrome.storage.onChanged.addListener(async (changes, area) => {
+    if (area !== 'local' || typeof changes.pendingEditIdx?.newValue !== 'number') return;
+    await load(); // 팝업에서 삭제 등으로 목록이 바뀌었을 수 있으니 최신 상태로
+    openPendingEdit(changes.pendingEditIdx.newValue);
+  });
+
   document.addEventListener('keydown', e => {
     const tag = e.target.tagName;
     const inField = tag === 'INPUT' || tag === 'TEXTAREA';

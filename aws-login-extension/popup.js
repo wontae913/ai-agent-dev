@@ -174,7 +174,7 @@ function renderList(accounts, filter = '') {
   list.querySelectorAll('[data-action="edit"]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      chrome.runtime.openOptionsPage();
+      openEditPage(+btn.dataset.idx);
     });
   });
 
@@ -212,6 +212,14 @@ function doLogin(acct) {
 function openOptions() {
   chrome.runtime.openOptionsPage();
   window.close();
+}
+
+// 관리 페이지를 열면서 해당 계정의 편집 폼을 바로 띄움
+function openEditPage(idx) {
+  chrome.storage.local.set({ pendingEditIdx: idx }, () => {
+    chrome.runtime.openOptionsPage();
+    window.close();
+  });
 }
 
 function focusSearch() {
